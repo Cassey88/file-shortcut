@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#10141F">
 <title>File Shortcut</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="manifestLink">
 <link rel="icon" href="icon-192.png">
 <style>
   :root{
@@ -21,18 +21,20 @@
     display:flex; flex-direction:column; align-items:center;
     padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));
   }
-  header{width:100%; max-width:420px; display:flex; align-items:baseline; justify-content:space-between; padding:8px 4px 0}
+  header{width:100%; max-width:420px; display:flex; align-items:center; justify-content:space-between; padding:8px 4px 0; gap:10px}
   header h1{font-size:15px; font-weight:600; letter-spacing:.4px}
   header .dot{color:var(--amber)}
-  #installBtn{
+  header .slotTag{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; color:var(--muted);
+    border:1px solid var(--line); padding:3px 8px; border-radius:999px}
+  .pillBtn{
     background:none; border:1px solid var(--line); color:var(--muted);
-    font-size:12px; padding:6px 12px; border-radius:999px; display:none; cursor:pointer;
+    font-size:12px; padding:6px 12px; border-radius:999px; cursor:pointer; white-space:nowrap;
   }
-  main{flex:1; width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px}
+  #installBtn{display:none}
+  main{flex:1; width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:16px 0}
 
-  /* Signature: the launcher button */
   #launch{
-    width:min(64vw,240px); aspect-ratio:1; border-radius:50%;
+    width:min(58vw,220px); aspect-ratio:1; border-radius:50%;
     background:var(--amber); border:none; cursor:pointer;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
     color:#1A1204; box-shadow:0 0 0 10px rgba(255,180,84,.08), 0 0 0 22px rgba(255,180,84,.04);
@@ -67,8 +69,6 @@
     flex:1; background:var(--panel); border:1px solid var(--line); color:var(--text);
     font-size:14px; padding:13px; border-radius:12px; cursor:pointer;
   }
-  #autoRow,#noPromptRow{width:100%; display:none; align-items:center; justify-content:space-between;
-    gap:12px; padding:4px 6px; font-size:13px; color:var(--muted)}
   .nameRow{width:100%; display:none; flex-direction:column; gap:8px; font-size:13px; color:var(--muted); padding:0 2px}
   .nameControls{display:flex; gap:10px}
   .nameControls input{
@@ -80,7 +80,20 @@
     background:var(--panel); border:1px solid var(--line); color:var(--text);
     font-size:14px; padding:11px 18px; border-radius:10px; cursor:pointer;
   }
-  #autoRow input,#noPromptRow input{width:20px; height:20px; accent-color:var(--amber); flex-shrink:0}
+  .toggleRow{width:100%; display:none; align-items:center; justify-content:space-between;
+    gap:12px; padding:4px 6px; font-size:13px; color:var(--muted)}
+  .toggleRow input{width:20px; height:20px; accent-color:var(--amber); flex-shrink:0}
+
+  #shortcutList{width:100%; display:none; flex-direction:column; gap:8px; padding-top:4px}
+  #shortcutList h2{font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.5px; text-transform:uppercase}
+  .slotItem{
+    display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:10px 14px;
+    color:var(--text); text-decoration:none; font-size:14px;
+  }
+  .slotItem .num{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; color:var(--amber); flex-shrink:0}
+  .slotItem .nm{flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .slotItem .cur{font-size:11px; color:var(--muted)}
   #status{min-height:20px; font-size:13px; color:var(--muted); text-align:center; padding:0 10px}
   #status.err{color:#FF8080}
   footer{font-size:11px; color:var(--muted); text-align:center; max-width:420px; padding-top:12px; line-height:1.5}
@@ -90,7 +103,9 @@
 <body>
 <header>
   <h1>File Shortcut<span class="dot">.</span></h1>
-  <button id="installBtn">Add to home screen</button>
+  <span class="slotTag" id="slotTag"></span>
+  <button class="pillBtn" id="newSlotBtn">+ New shortcut</button>
+  <button class="pillBtn" id="installBtn">Add to home screen</button>
 </header>
 
 <main>
@@ -114,36 +129,48 @@
   </div>
 
   <div class="nameRow" id="nameRow">
-    <label for="appName">Home screen name</label>
+    <label for="appName">Home screen name for this shortcut</label>
     <div class="nameControls">
       <input type="text" id="appName" maxlength="30" placeholder="File Shortcut">
       <button id="saveNameBtn">Save</button>
     </div>
   </div>
 
-  <div id="autoRow">
+  <div class="toggleRow" id="autoRow">
     <label for="autoOpen">Open instantly when app launches</label>
     <input type="checkbox" id="autoOpen">
   </div>
 
-  <div id="noPromptRow">
+  <div class="toggleRow" id="noPromptRow">
     <label for="noPrompt">Never ask for permission (use a saved copy)</label>
     <input type="checkbox" id="noPrompt">
+  </div>
+
+  <div id="shortcutList">
+    <h2>Your shortcuts</h2>
   </div>
 
   <div id="status" role="status"></div>
 </main>
 
 <footer>
-  Your file never leaves this device. Android asks a one-tap
-  “allow access” the first time after each restart — that’s the OS, not the app.
+  Each shortcut is its own home screen icon with its own file and name.
+  Your files never leave this device.
 </footer>
 
 <input type="file" id="fallbackPicker" hidden>
 
 <script>
 const $ = id => document.getElementById(id);
-const DB='fileShortcut', STORE='kv';
+const DB='fileShortcut', STORE='kv', MAX_SLOTS=20;
+
+// ---------- slot ----------
+const slot = (new URLSearchParams(location.search).get('slot')||'1').replace(/[^0-9]/g,'')||'1';
+// slot 1 keeps the original un-prefixed keys so existing setups keep working
+const k = n => slot==='1' ? n : 's'+slot+':'+n;
+$('slotTag').textContent = 'shortcut #'+slot;
+$('manifestLink').href = 'manifest.json?slot='+slot;
+
 let handle=null, storedFile=null, deferredPrompt=null;
 
 // ---------- IndexedDB ----------
@@ -152,12 +179,12 @@ function idb(){ return new Promise((res,rej)=>{
   r.onupgradeneeded=()=>r.result.createObjectStore(STORE);
   r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
 });}
-async function kvSet(k,v){ const d=await idb(); return new Promise((res,rej)=>{
-  const t=d.transaction(STORE,'readwrite'); t.objectStore(STORE).put(v,k);
+async function kvSet(key,v){ const d=await idb(); return new Promise((res,rej)=>{
+  const t=d.transaction(STORE,'readwrite'); t.objectStore(STORE).put(v,key);
   t.oncomplete=res; t.onerror=()=>rej(t.error);
 });}
-async function kvGet(k){ const d=await idb(); return new Promise((res,rej)=>{
-  const q=d.transaction(STORE).objectStore(STORE).get(k);
+async function kvGet(key){ const d=await idb(); return new Promise((res,rej)=>{
+  const q=d.transaction(STORE).objectStore(STORE).get(key);
   q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
 });}
 
@@ -173,7 +200,9 @@ function showFileUI(name,size){
   $('launchLabel').textContent='Open';
   $('launchHint').textContent='tap to launch';
   $('fileName').textContent=name;
-  $('fileInfo').textContent=(size!=null?fmtSize(size)+' · ':'')+(handle?'linked to original file':'stored copy');
+  const mode=(localStorage.getItem(k('noPrompt'))&&storedFile)?'saved copy — never asks'
+            :(handle?'linked to original file':'stored copy');
+  $('fileInfo').textContent=(size!=null?fmtSize(size)+' · ':'')+mode;
   $('fileCard').style.display='flex';
   $('actionRow').style.display='flex';
   $('autoRow').style.display='flex';
@@ -187,9 +216,12 @@ async function pickFile(){
     if(window.showOpenFilePicker){
       const [h]=await window.showOpenFilePicker();
       handle=h; storedFile=null;
-      await kvSet('handle',h); await kvSet('copy',null);
+      await kvSet(k('handle'),h); await kvSet(k('copy'),null);
+      localStorage.removeItem(k('noPrompt')); $('noPrompt').checked=false;
       const f=await h.getFile();
-      showFileUI(f.name,f.size); await setDefaultName(f.name); setStatus('Remembered. Next launch is one tap.');
+      showFileUI(f.name,f.size); await setDefaultName(f.name);
+      setStatus('Remembered. Next launch is one tap.');
+      renderSlots();
     }else{
       $('fallbackPicker').click();
     }
@@ -198,10 +230,10 @@ async function pickFile(){
 $('fallbackPicker').addEventListener('change',async e=>{
   const f=e.target.files[0]; if(!f)return;
   storedFile=f; handle=null;
-  await kvSet('copy',f); await kvSet('handle',null);
-  showFileUI(f.name,f.size);
-  await setDefaultName(f.name);
+  await kvSet(k('copy'),f); await kvSet(k('handle'),null);
+  showFileUI(f.name,f.size); await setDefaultName(f.name);
   setStatus('This browser can’t link the original, so a copy is stored. Re-pick after the file changes.');
+  renderSlots();
 });
 
 // ---------- getting the File ----------
@@ -213,14 +245,14 @@ async function readFromHandle(){
   return handle.getFile();
 }
 async function getFile(){
-  if(localStorage.getItem('noPrompt') && storedFile) return storedFile;
+  if(localStorage.getItem(k('noPrompt')) && storedFile) return storedFile;
   if(handle) return readFromHandle();
   if(storedFile) return storedFile;
   return null;
 }
 
 // ---------- opening ----------
-async function openFile(mode){ // mode: 'auto' | 'view' | 'share'
+async function openFile(mode){ // 'auto' | 'view' | 'share'
   try{
     const f=await getFile();
     if(!f){ pickFile(); return; }
@@ -229,7 +261,7 @@ async function openFile(mode){ // mode: 'auto' | 'view' | 'share'
         await navigator.share({files:[f],title:f.name});
         return;
       }
-      mode='view'; // fall through
+      mode='view';
     }
     const url=URL.createObjectURL(f);
     const w=window.open(url,'_blank');
@@ -239,7 +271,6 @@ async function openFile(mode){ // mode: 'auto' | 'view' | 'share'
     if(e.name!=='AbortError') setStatus(e.message,true);
   }
 }
-
 $('launch').addEventListener('click',()=>openFile('auto'));
 $('openInBtn').addEventListener('click',()=>openFile('view'));
 $('shareBtn').addEventListener('click',()=>openFile('share'));
@@ -247,18 +278,19 @@ $('changeBtn').addEventListener('click',pickFile);
 
 // ---------- shortcut name ----------
 async function setDefaultName(fileName){
-  const existing=await kvGet('appName');
+  const existing=await kvGet(k('appName'));
   if(existing){ $('appName').value=existing; return; }
   const base=fileName.replace(/\.[a-z0-9]+$/i,'');
   $('appName').value=base;
-  await kvSet('appName',base);
+  await kvSet(k('appName'),base);
   document.title=base;
 }
 $('saveNameBtn').addEventListener('click',async()=>{
-  const v=$('appName').value.trim()||'File Shortcut';
-  await kvSet('appName',v);
+  const v=$('appName').value.trim()||('File Shortcut '+slot);
+  await kvSet(k('appName'),v);
   document.title=v;
-  setStatus('Name saved. Remove the old home screen icon, then Add to home screen again to apply it.');
+  renderSlots();
+  setStatus('Name saved. Now use “Add to home screen” — the icon will be called “'+v+'”.');
 });
 
 // ---------- no-prompt mode ----------
@@ -267,16 +299,16 @@ $('noPrompt').addEventListener('change',async e=>{
     try{
       const f=handle?await readFromHandle():storedFile;
       if(!f){ setStatus('Pick a file first.',true); e.target.checked=false; return; }
-      storedFile=f; await kvSet('copy',f);
-      localStorage.setItem('noPrompt','1');
+      storedFile=f; await kvSet(k('copy'),f);
+      localStorage.setItem(k('noPrompt'),'1');
       showFileUI(f.name,f.size);
-      setStatus('Copy saved \u2014 no more permission prompts. If the file ever changes, untick and re-tick this to refresh the copy.');
+      setStatus('Copy saved — no more permission prompts. If the file changes, untick and re-tick this to refresh the copy.');
     }catch(err){
       e.target.checked=false;
       if(err.name!=='AbortError') setStatus(err.message,true);
     }
   }else{
-    localStorage.removeItem('noPrompt');
+    localStorage.removeItem(k('noPrompt'));
     if(handle) showFileUI($('fileName').textContent, null);
     setStatus('Back to opening the original file (Chrome will ask again).');
   }
@@ -284,10 +316,41 @@ $('noPrompt').addEventListener('change',async e=>{
 
 // ---------- auto-open ----------
 $('autoOpen').addEventListener('change',e=>{
-  localStorage.setItem('autoOpen',e.target.checked?'1':'');
-  setStatus(e.target.checked
-    ?'Will open the file automatically when access is already granted.'
-    :'');
+  localStorage.setItem(k('autoOpen'),e.target.checked?'1':'');
+  setStatus(e.target.checked?'Will open the file automatically when no permission prompt is needed.':'');
+});
+
+// ---------- multi-shortcut ----------
+async function slotInfo(n){
+  const key = n===1 ? (x=>x) : (x=>'s'+n+':'+x);
+  const h=await kvGet(key('handle')), c=await kvGet(key('copy'));
+  if(!h && !c) return null;
+  const name=await kvGet(key('appName'));
+  return { n, name: name || (h&&h.name) || (c&&c.name) || ('Shortcut '+n) };
+}
+async function renderSlots(){
+  const list=$('shortcutList');
+  [...list.querySelectorAll('.slotItem')].forEach(el=>el.remove());
+  let count=0;
+  for(let n=1;n<=MAX_SLOTS;n++){
+    const info=await slotInfo(n);
+    if(!info) continue;
+    count++;
+    const a=document.createElement('a');
+    a.className='slotItem';
+    a.href='index.html?slot='+n;
+    a.innerHTML='<span class="num">#'+n+'</span><span class="nm"></span>'+
+      (String(n)===slot?'<span class="cur">(this one)</span>':'');
+    a.querySelector('.nm').textContent=info.name;
+    list.appendChild(a);
+  }
+  list.style.display = count>1 ? 'flex' : 'none';
+}
+$('newSlotBtn').addEventListener('click',async()=>{
+  for(let n=1;n<=MAX_SLOTS;n++){
+    if(!(await slotInfo(n))){ location.assign('index.html?slot='+n); return; }
+  }
+  setStatus('All '+MAX_SLOTS+' shortcut slots are in use.',true);
 });
 
 // ---------- install prompt ----------
@@ -304,11 +367,16 @@ $('installBtn').addEventListener('click',async()=>{
 (async function init(){
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   try{
-    handle=await kvGet('handle')||null;
-    storedFile=await kvGet('copy')||null;
-    if(localStorage.getItem('noPrompt') && storedFile){
+    handle=await kvGet(k('handle'))||null;
+    storedFile=await kvGet(k('copy'))||null;
+    const savedName=await kvGet(k('appName'));
+    if(savedName){ $('appName').value=savedName; document.title=savedName; }
+    $('autoOpen').checked=!!localStorage.getItem(k('autoOpen'));
+    $('noPrompt').checked=!!localStorage.getItem(k('noPrompt'));
+
+    if(localStorage.getItem(k('noPrompt')) && storedFile){
       showFileUI(storedFile.name,storedFile.size);
-      if(localStorage.getItem('autoOpen') && VIEWABLE.test(storedFile.type))
+      if(localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type))
         location.assign(URL.createObjectURL(storedFile));
     }else if(handle){
       const p=await handle.queryPermission({mode:'read'});
@@ -316,19 +384,16 @@ $('installBtn').addEventListener('click',async()=>{
       if(p==='granted'){ const f=await handle.getFile(); name=f.name; size=f.size; }
       else if(handle.name) name=handle.name;
       showFileUI(name,size);
-      if(p==='granted' && localStorage.getItem('autoOpen')){
+      if(p==='granted' && localStorage.getItem(k('autoOpen'))){
         const f=await handle.getFile();
         if(VIEWABLE.test(f.type)) location.assign(URL.createObjectURL(f));
       }
     }else if(storedFile){
       showFileUI(storedFile.name,storedFile.size);
-      if(localStorage.getItem('autoOpen') && VIEWABLE.test(storedFile.type))
+      if(localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type))
         location.assign(URL.createObjectURL(storedFile));
     }
-    $('autoOpen').checked=!!localStorage.getItem('autoOpen');
-    $('noPrompt').checked=!!localStorage.getItem('noPrompt');
-    const savedName=await kvGet('appName');
-    if(savedName){ $('appName').value=savedName; document.title=savedName; }
+    renderSlots();
   }catch(e){ setStatus('Could not restore saved file — choose it again.',true); }
 })();
 </script>

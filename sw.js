@@ -1,4 +1,4 @@
-const CACHE = 'file-shortcut-v2';
+const CACHE = 'file-shortcut-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -25,13 +25,21 @@ function idbGet(key) {
   });
 }
 
+// Per-slot manifest: unique id + start_url per shortcut so Android
+// installs each one as a separate home screen app, with its own name.
 async function customManifest(req) {
-  const base = (await caches.match('./manifest.json')) || (await fetch(req));
+  const url = new URL(req.url);
+  const slot = (url.searchParams.get('slot') || '1').replace(/[^0-9]/g, '') || '1';
+  const nameKey = slot === '1' ? 'appName' : 's' + slot + ':appName';
+  const base = (await caches.match('./manifest.json')) || (await fetch('./manifest.json'));
   const json = await base.clone().json();
+  json.start_url = './index.html?slot=' + slot;
+  json.id = './index.html?slot=' + slot;
   try {
-    const name = await idbGet('appName');
+    const name = await idbGet(nameKey);
     if (name) { json.name = name; json.short_name = name; }
-  } catch (e) { /* fall back to default name */ }
+    else if (slot !== '1') { json.name = 'File Shortcut ' + slot; json.short_name = 'Shortcut ' + slot; }
+  } catch (e) { /* default names */ }
   return new Response(JSON.stringify(json), {
     headers: { 'Content-Type': 'application/manifest+json' }
   });
@@ -44,5 +52,8 @@ self.addEventListener('fetch', e => {
     e.respondWith(customManifest(e.request));
     return;
   }
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
+  // ignoreSearch so index.html?slot=N serves from the cached index.html offline
+  e.respondWith(
+    caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request))
+  );
 });

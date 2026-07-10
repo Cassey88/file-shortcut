@@ -67,8 +67,8 @@
     flex:1; background:var(--panel); border:1px solid var(--line); color:var(--text);
     font-size:14px; padding:13px; border-radius:12px; cursor:pointer;
   }
-  #autoRow{width:100%; display:none; align-items:center; justify-content:space-between;
-    padding:4px 6px; font-size:13px; color:var(--muted)}
+  #autoRow,#noPromptRow{width:100%; display:none; align-items:center; justify-content:space-between;
+    gap:12px; padding:4px 6px; font-size:13px; color:var(--muted)}
   .nameRow{width:100%; display:none; flex-direction:column; gap:8px; font-size:13px; color:var(--muted); padding:0 2px}
   .nameControls{display:flex; gap:10px}
   .nameControls input{
@@ -80,7 +80,7 @@
     background:var(--panel); border:1px solid var(--line); color:var(--text);
     font-size:14px; padding:11px 18px; border-radius:10px; cursor:pointer;
   }
-  #autoRow input{width:20px; height:20px; accent-color:var(--amber)}
+  #autoRow input,#noPromptRow input{width:20px; height:20px; accent-color:var(--amber); flex-shrink:0}
   #status{min-height:20px; font-size:13px; color:var(--muted); text-align:center; padding:0 10px}
   #status.err{color:#FF8080}
   footer{font-size:11px; color:var(--muted); text-align:center; max-width:420px; padding-top:12px; line-height:1.5}
@@ -124,6 +124,11 @@
   <div id="autoRow">
     <label for="autoOpen">Open instantly when app launches</label>
     <input type="checkbox" id="autoOpen">
+  </div>
+
+  <div id="noPromptRow">
+    <label for="noPrompt">Never ask for permission (use a saved copy)</label>
+    <input type="checkbox" id="noPrompt">
   </div>
 
   <div id="status" role="status"></div>
@@ -172,6 +177,7 @@ function showFileUI(name,size){
   $('fileCard').style.display='flex';
   $('actionRow').style.display='flex';
   $('autoRow').style.display='flex';
+  $('noPromptRow').style.display='flex';
   $('nameRow').style.display='flex';
 }
 
@@ -199,13 +205,16 @@ $('fallbackPicker').addEventListener('change',async e=>{
 });
 
 // ---------- getting the File ----------
+async function readFromHandle(){
+  if(!handle) return null;
+  let p=await handle.queryPermission({mode:'read'});
+  if(p!=='granted') p=await handle.requestPermission({mode:'read'});
+  if(p!=='granted') throw new Error('Access not allowed');
+  return handle.getFile();
+}
 async function getFile(){
-  if(handle){
-    let p=await handle.queryPermission({mode:'read'});
-    if(p!=='granted') p=await handle.requestPermission({mode:'read'});
-    if(p!=='granted') throw new Error('Access not allowed');
-    return handle.getFile();
-  }
+  if(localStorage.getItem('noPrompt') && storedFile) return storedFile;
+  if(handle) return readFromHandle();
   if(storedFile) return storedFile;
   return null;
 }
@@ -252,6 +261,27 @@ $('saveNameBtn').addEventListener('click',async()=>{
   setStatus('Name saved. Remove the old home screen icon, then Add to home screen again to apply it.');
 });
 
+// ---------- no-prompt mode ----------
+$('noPrompt').addEventListener('change',async e=>{
+  if(e.target.checked){
+    try{
+      const f=handle?await readFromHandle():storedFile;
+      if(!f){ setStatus('Pick a file first.',true); e.target.checked=false; return; }
+      storedFile=f; await kvSet('copy',f);
+      localStorage.setItem('noPrompt','1');
+      showFileUI(f.name,f.size);
+      setStatus('Copy saved \u2014 no more permission prompts. If the file ever changes, untick and re-tick this to refresh the copy.');
+    }catch(err){
+      e.target.checked=false;
+      if(err.name!=='AbortError') setStatus(err.message,true);
+    }
+  }else{
+    localStorage.removeItem('noPrompt');
+    if(handle) showFileUI($('fileName').textContent, null);
+    setStatus('Back to opening the original file (Chrome will ask again).');
+  }
+});
+
 // ---------- auto-open ----------
 $('autoOpen').addEventListener('change',e=>{
   localStorage.setItem('autoOpen',e.target.checked?'1':'');
@@ -276,7 +306,11 @@ $('installBtn').addEventListener('click',async()=>{
   try{
     handle=await kvGet('handle')||null;
     storedFile=await kvGet('copy')||null;
-    if(handle){
+    if(localStorage.getItem('noPrompt') && storedFile){
+      showFileUI(storedFile.name,storedFile.size);
+      if(localStorage.getItem('autoOpen') && VIEWABLE.test(storedFile.type))
+        location.assign(URL.createObjectURL(storedFile));
+    }else if(handle){
       const p=await handle.queryPermission({mode:'read'});
       let name='(saved file)',size=null;
       if(p==='granted'){ const f=await handle.getFile(); name=f.name; size=f.size; }
@@ -292,6 +326,7 @@ $('installBtn').addEventListener('click',async()=>{
         location.assign(URL.createObjectURL(storedFile));
     }
     $('autoOpen').checked=!!localStorage.getItem('autoOpen');
+    $('noPrompt').checked=!!localStorage.getItem('noPrompt');
     const savedName=await kvGet('appName');
     if(savedName){ $('appName').value=savedName; document.title=savedName; }
   }catch(e){ setStatus('Could not restore saved file — choose it again.',true); }

@@ -165,7 +165,9 @@ const $ = id => document.getElementById(id);
 const DB='fileShortcut', STORE='kv', MAX_SLOTS=20;
 
 // ---------- slot ----------
-const slot = (new URLSearchParams(location.search).get('slot')||'1').replace(/[^0-9]/g,'')||'1';
+const _params = new URLSearchParams(location.search);
+const slot = (_params.get('slot')||'1').replace(/[^0-9]/g,'')||'1';
+const stayHere = !!_params.get('stay'); // ?stay=1 always shows this page, never auto-opens
 // slot 1 keeps the original un-prefixed keys so existing setups keep working
 const k = n => slot==='1' ? n : 's'+slot+':'+n;
 $('slotTag').textContent = 'shortcut #'+slot;
@@ -376,7 +378,7 @@ $('installBtn').addEventListener('click',async()=>{
     $('autoOpen').checked=!!localStorage.getItem(k('autoOpen'));
     $('noPrompt').checked=!!localStorage.getItem(k('noPrompt'));
 
-    const freshLaunch = !sessionStorage.getItem('fs-opened-'+slot);
+    const freshLaunch = !stayHere && !sessionStorage.getItem('fs-opened-'+slot);
     if(localStorage.getItem(k('noPrompt')) && storedFile){
       showFileUI(storedFile.name,storedFile.size);
       if(freshLaunch && localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type)){

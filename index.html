@@ -263,6 +263,7 @@ async function openFile(mode){ // 'auto' | 'view' | 'share'
       }
       mode='view';
     }
+    sessionStorage.setItem('fs-opened-'+slot,'1');
     const url=URL.createObjectURL(f);
     const w=window.open(url,'_blank');
     if(!w) location.assign(url);
@@ -374,24 +375,32 @@ $('installBtn').addEventListener('click',async()=>{
     $('autoOpen').checked=!!localStorage.getItem(k('autoOpen'));
     $('noPrompt').checked=!!localStorage.getItem(k('noPrompt'));
 
+    const freshLaunch = !sessionStorage.getItem('fs-opened-'+slot);
     if(localStorage.getItem(k('noPrompt')) && storedFile){
       showFileUI(storedFile.name,storedFile.size);
-      if(localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type))
+      if(freshLaunch && localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type)){
+        sessionStorage.setItem('fs-opened-'+slot,'1');
         location.assign(URL.createObjectURL(storedFile));
+      }
     }else if(handle){
       const p=await handle.queryPermission({mode:'read'});
       let name='(saved file)',size=null;
       if(p==='granted'){ const f=await handle.getFile(); name=f.name; size=f.size; }
       else if(handle.name) name=handle.name;
       showFileUI(name,size);
-      if(p==='granted' && localStorage.getItem(k('autoOpen'))){
+      if(freshLaunch && p==='granted' && localStorage.getItem(k('autoOpen'))){
         const f=await handle.getFile();
-        if(VIEWABLE.test(f.type)) location.assign(URL.createObjectURL(f));
+        if(VIEWABLE.test(f.type)){
+          sessionStorage.setItem('fs-opened-'+slot,'1');
+          location.assign(URL.createObjectURL(f));
+        }
       }
     }else if(storedFile){
       showFileUI(storedFile.name,storedFile.size);
-      if(localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type))
+      if(freshLaunch && localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type)){
+        sessionStorage.setItem('fs-opened-'+slot,'1');
         location.assign(URL.createObjectURL(storedFile));
+      }
     }
     renderSlots();
   }catch(e){ setStatus('Could not restore saved file — choose it again.',true); }

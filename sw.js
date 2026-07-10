@@ -1,4 +1,4 @@
-const CACHE = 'file-shortcut-v3';
+const CACHE = 'file-shortcut-v4';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -45,9 +45,29 @@ async function customManifest(req) {
   });
 }
 
+// Serve the staged file at a permanent URL: ./file?slot=N
+// Back/forward, reload, and even direct shortcuts to it always work.
+async function serveFile(url) {
+  const slot = (url.searchParams.get('slot') || '1').replace(/[^0-9]/g, '') || '1';
+  const f = await idbGet('fileserve:' + slot);
+  if (!f) {
+    return Response.redirect(new URL('./index.html?slot=' + slot, self.registration.scope).href, 302);
+  }
+  return new Response(f, {
+    headers: {
+      'Content-Type': f.type || 'application/octet-stream',
+      'Content-Disposition': 'inline; filename="' + (f.name || 'file') + '"'
+    }
+  });
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  if (url.pathname.endsWith('/file')) {
+    e.respondWith(serveFile(url));
+    return;
+  }
   if (url.pathname.endsWith('manifest.json')) {
     e.respondWith(customManifest(e.request));
     return;

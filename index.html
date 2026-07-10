@@ -264,7 +264,8 @@ async function openFile(mode){ // 'auto' | 'view' | 'share'
       mode='view';
     }
     sessionStorage.setItem('fs-opened-'+slot,'1');
-    const url=URL.createObjectURL(f);
+    await kvSet('fileserve:'+slot,f);
+    const url='file?slot='+slot;
     const w=window.open(url,'_blank');
     if(!w) location.assign(url);
     setStatus('');
@@ -380,7 +381,8 @@ $('installBtn').addEventListener('click',async()=>{
       showFileUI(storedFile.name,storedFile.size);
       if(freshLaunch && localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type)){
         sessionStorage.setItem('fs-opened-'+slot,'1');
-        location.assign(URL.createObjectURL(storedFile));
+        await kvSet('fileserve:'+slot,storedFile);
+        location.assign('file?slot='+slot);
       }
     }else if(handle){
       const p=await handle.queryPermission({mode:'read'});
@@ -392,14 +394,16 @@ $('installBtn').addEventListener('click',async()=>{
         const f=await handle.getFile();
         if(VIEWABLE.test(f.type)){
           sessionStorage.setItem('fs-opened-'+slot,'1');
-          location.assign(URL.createObjectURL(f));
+          await kvSet('fileserve:'+slot,f);
+          location.assign('file?slot='+slot);
         }
       }
     }else if(storedFile){
       showFileUI(storedFile.name,storedFile.size);
       if(freshLaunch && localStorage.getItem(k('autoOpen')) && VIEWABLE.test(storedFile.type)){
         sessionStorage.setItem('fs-opened-'+slot,'1');
-        location.assign(URL.createObjectURL(storedFile));
+        await kvSet('fileserve:'+slot,storedFile);
+        location.assign('file?slot='+slot);
       }
     }
     renderSlots();

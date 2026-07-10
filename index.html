@@ -69,6 +69,17 @@
   }
   #autoRow{width:100%; display:none; align-items:center; justify-content:space-between;
     padding:4px 6px; font-size:13px; color:var(--muted)}
+  .nameRow{width:100%; display:none; flex-direction:column; gap:8px; font-size:13px; color:var(--muted); padding:0 2px}
+  .nameControls{display:flex; gap:10px}
+  .nameControls input{
+    flex:1; background:var(--panel); border:1px solid var(--line); color:var(--text);
+    font-size:14px; padding:11px 12px; border-radius:10px; min-width:0;
+  }
+  .nameControls input:focus{outline:2px solid var(--amber); outline-offset:-1px}
+  .nameControls button{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    font-size:14px; padding:11px 18px; border-radius:10px; cursor:pointer;
+  }
   #autoRow input{width:20px; height:20px; accent-color:var(--amber)}
   #status{min-height:20px; font-size:13px; color:var(--muted); text-align:center; padding:0 10px}
   #status.err{color:#FF8080}
@@ -100,6 +111,14 @@
   <div class="row" id="actionRow">
     <button id="openInBtn">Open in Chrome</button>
     <button id="shareBtn">Send to app…</button>
+  </div>
+
+  <div class="nameRow" id="nameRow">
+    <label for="appName">Home screen name</label>
+    <div class="nameControls">
+      <input type="text" id="appName" maxlength="30" placeholder="File Shortcut">
+      <button id="saveNameBtn">Save</button>
+    </div>
   </div>
 
   <div id="autoRow">
@@ -153,6 +172,7 @@ function showFileUI(name,size){
   $('fileCard').style.display='flex';
   $('actionRow').style.display='flex';
   $('autoRow').style.display='flex';
+  $('nameRow').style.display='flex';
 }
 
 // ---------- picking ----------
@@ -163,7 +183,7 @@ async function pickFile(){
       handle=h; storedFile=null;
       await kvSet('handle',h); await kvSet('copy',null);
       const f=await h.getFile();
-      showFileUI(f.name,f.size); setStatus('Remembered. Next launch is one tap.');
+      showFileUI(f.name,f.size); await setDefaultName(f.name); setStatus('Remembered. Next launch is one tap.');
     }else{
       $('fallbackPicker').click();
     }
@@ -174,6 +194,7 @@ $('fallbackPicker').addEventListener('change',async e=>{
   storedFile=f; handle=null;
   await kvSet('copy',f); await kvSet('handle',null);
   showFileUI(f.name,f.size);
+  await setDefaultName(f.name);
   setStatus('This browser can’t link the original, so a copy is stored. Re-pick after the file changes.');
 });
 
@@ -215,6 +236,22 @@ $('openInBtn').addEventListener('click',()=>openFile('view'));
 $('shareBtn').addEventListener('click',()=>openFile('share'));
 $('changeBtn').addEventListener('click',pickFile);
 
+// ---------- shortcut name ----------
+async function setDefaultName(fileName){
+  const existing=await kvGet('appName');
+  if(existing){ $('appName').value=existing; return; }
+  const base=fileName.replace(/\.[a-z0-9]+$/i,'');
+  $('appName').value=base;
+  await kvSet('appName',base);
+  document.title=base;
+}
+$('saveNameBtn').addEventListener('click',async()=>{
+  const v=$('appName').value.trim()||'File Shortcut';
+  await kvSet('appName',v);
+  document.title=v;
+  setStatus('Name saved. Remove the old home screen icon, then Add to home screen again to apply it.');
+});
+
 // ---------- auto-open ----------
 $('autoOpen').addEventListener('change',e=>{
   localStorage.setItem('autoOpen',e.target.checked?'1':'');
@@ -255,6 +292,8 @@ $('installBtn').addEventListener('click',async()=>{
         location.assign(URL.createObjectURL(storedFile));
     }
     $('autoOpen').checked=!!localStorage.getItem('autoOpen');
+    const savedName=await kvGet('appName');
+    if(savedName){ $('appName').value=savedName; document.title=savedName; }
   }catch(e){ setStatus('Could not restore saved file — choose it again.',true); }
 })();
 </script>

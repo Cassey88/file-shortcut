@@ -30,7 +30,6 @@
     background:none; border:1px solid var(--line); color:var(--muted);
     font-size:12px; padding:6px 12px; border-radius:999px; cursor:pointer; white-space:nowrap;
   }
-  #installBtn{display:none}
   main{flex:1; width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:16px 0}
 
   #launch{
@@ -359,12 +358,18 @@ $('newSlotBtn').addEventListener('click',async()=>{
 
 // ---------- install prompt ----------
 window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredPrompt=e; $('installBtn').style.display='block';
+  e.preventDefault(); deferredPrompt=e;
+});
+window.addEventListener('appinstalled',()=>{
+  setStatus('Added! Check your home screen.');
 });
 $('installBtn').addEventListener('click',async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt(); await deferredPrompt.userChoice;
-  deferredPrompt=null; $('installBtn').style.display='none';
+  if(deferredPrompt){
+    const p=deferredPrompt; deferredPrompt=null;
+    p.prompt(); await p.userChoice;
+  }else{
+    setStatus('Chrome isn\u2019t offering the install dialog right now (often because this shortcut is already installed). Use Chrome\u2019s \u22ee menu \u2192 \u201cAdd to Home screen\u201d or \u201cInstall and create shortcut\u201d instead.');
+  }
 });
 
 // ---------- boot ----------
